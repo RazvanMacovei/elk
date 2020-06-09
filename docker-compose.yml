@@ -1,0 +1,68 @@
+version: "3.3"
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.3.1
+    container_name: elasticsearch
+    environment:
+      - node.name=es01
+      - cluster.name=docker-cluster-es01
+      - discovery.type=single-node
+      - http.host=0.0.0.0
+      - network.host=0.0.0.0
+      - transport.host=127.0.0.1
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms${ELASTIC_HEAP_SIZE-1024m} -Xmx${ELASTIC_HEAP_SIZE-1024m}"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    cap_add:
+      - ALL
+    privileged: true
+    ports:
+      - 9200:9200
+      - 9300:9300
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    restart: always
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.3.1
+    container_name: kibana
+    environment:
+      - SERVER_NAME=localhost
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - VIRTUAL_HOST=127.0.0.1
+      - VIRTUAL_PORT=5601
+    ports:
+      - 5601:5601
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    cap_add:
+      - ALL
+    links:
+      - elasticsearch
+    restart: always
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.3.1
+    container_name: logstash
+    environment:
+      - http.host=localhost
+      - VIRTUAL_HOST=127.0.0.1
+      - VIRTUAL_PORT=5000
+    volumes:
+      - ./pipeline:/usr/share/logstash/pipeline
+    ports:
+      - 5000:5000
+    links:
+      - elasticsearch
+    restart: always
+
+volumes:
+  esdata:
+    driver: local
+
